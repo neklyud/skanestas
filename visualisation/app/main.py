@@ -51,6 +51,9 @@ def load_graphic(ticker: str, _: int):
     """
     Load and update graph function.
 
+    UPD: хотел сделать подгрузку только последнего элемента
+    в процессе отображения графика по тикеру, но не успел.
+
     Args:
         ticker (str): name of ticker.
         _ (int): pass.
