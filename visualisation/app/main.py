@@ -1,6 +1,7 @@
 """Visualisation module."""
 
 import asyncio
+import logging
 
 import plotly
 from app.conf import config
@@ -24,14 +25,13 @@ def get_options() -> list:
             req_params={'bucket': 'tickers'},
         ),
     )
-    return [i_data for i_data in measurements if i_data.starswith('tickers')]
+    return [i_data for i_data in measurements if i_data.startswith('tickers')]
 
 
 app.layout = html.Div(
     children=[
         html.H1(children='Skanestas test task'),
         html.Div(children='Ticker prices.'),
-        html.Div(id='live-update-text'),
         dcc.Dropdown(
             id='ticker', options=get_options(), value=get_options()[0],
         ),
@@ -63,6 +63,7 @@ def load_graphic(ticker: str, _: int):
             url=f'{config.url}/api/history/{ticker}', req_params=period_param,
         ),
     )
+    logging.info(tickers_history)
     spacing_val = 0.2
     fig = plotly.tools.make_subplots(
         rows=2, cols=1, vertical_spacing=spacing_val,
@@ -71,6 +72,7 @@ def load_graphic(ticker: str, _: int):
         {
             'x': [i_data['time'] for i_data in tickers_history],
             'y': [i_data['measure'] for i_data in tickers_history],
+            'name': 'Ticker prices.',
         },
         1,
         1,

@@ -1,0 +1,3 @@
+isort .
+mypy .
+flake8 .

@@ -95,7 +95,7 @@ class GeneratorManager(object):
             |> last()'  # noqa:  N400
             new_price = await api.get_price(query_string)
             await api.write_price(
-                bucket=config.bucket, ticker=ticker, value=new_price,
+                bucket=config.bucket, ticker=ticker, price_value=new_price,
             )
             logging.info(f'Send {new_price} to {ticker}')
             await asyncio.sleep(timeout)
