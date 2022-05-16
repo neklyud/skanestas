@@ -1,19 +1,30 @@
-import json
+"""Visualisation module."""
 
-import influxdb_client
+import asyncio
+
 import plotly
-from dash import Dash, html, dcc, Input, Output
-
-
-from loader import InfluxLoader
+from app.conf import config
+from app.request import RequestHelper
+from dash import Dash, Input, Output, dcc, html
 
 app = Dash(__name__)
+server = app.server
 
 
-def get_options():
-    with open('tickers.json', 'r') as json_file:
-        json_data = json.loads(json_file.read())
-        return json_data['data']
+def get_options() -> list:
+    """
+    Return measures.
+
+    Returns:
+        list: list of tickers names.
+    """
+    measurements = asyncio.run(
+        RequestHelper.get(
+            url=f'{config.url}/api/measurments',
+            req_params={'bucket': 'tickers'},
+        ),
+    )
+    return [i_data for i_data in measurements if i_data.starswith('tickers')]
 
 
 app.layout = html.Div(
@@ -21,42 +32,49 @@ app.layout = html.Div(
         html.H1(children='Skanestas test task'),
         html.Div(children='Ticker prices.'),
         html.Div(id='live-update-text'),
-        dcc.Dropdown(id='ticker', options=get_options(), value=get_options()[0]),
+        dcc.Dropdown(
+            id='ticker', options=get_options(), value=get_options()[0],
+        ),
         dcc.Graph(id='tickers-graphic'),
-        dcc.Interval(id='interval-component', interval=1000, n_intervals=0)
-    ]
+        dcc.Interval(id='interval-component', interval=1000, n_intervals=0),
+    ],
 )
-
-
-@app.callback(Output('live-update-text', 'children'),
-              Input('interval-component', 'n_intervals'))
-def update_metrics(n):
-    import random
-
-    lon, lat, alt = random.randint(0, 10), random.randint(0, 4), random.randint(0, 10)
-    style = {'padding': '5px', 'fontSize': '16px'}
-    return [
-        html.Span('Longitude: {0:.2f}'.format(lon), style=style),
-        html.Span('Latitude: {0:.2f}'.format(lat), style=style),
-        html.Span('Altitude: {0:0.2f}'.format(alt), style=style)
-    ]
 
 
 @app.callback(
     Output('tickers-graphic', 'figure'),
     Input('ticker', 'value'),
     Input('interval-component', 'n_intervals'),
-    log=True
+    log=True,
 )
 def load_graphic(ticker: str, _: int):
-    influx_client = influxdb_client.InfluxDBClient(url="http://localhost:8086", token='token-test', org='skanestas')
-    data = InfluxLoader(influx_client).get_history(ticker)
-    fig = plotly.tools.make_subplots(rows=2, cols=1, vertical_spacing=0.2)
-    fig.append_trace({
-        'x': data.index,
-        'y': data['measurement']
-    }, 1, 1)
-    influx_client.close()
+    """
+    Load and update graph function.
+
+    Args:
+        ticker (str): name of ticker.
+        _ (int): pass.
+    Returns:
+        figure
+    """  # noqa: DAR102, DAR003, DAR201
+    period_param = {'period': config.history_load_period}
+    tickers_history = asyncio.run(
+        RequestHelper.get(
+            url=f'{config.url}/api/history/{ticker}', req_params=period_param,
+        ),
+    )
+    spacing_val = 0.2
+    fig = plotly.tools.make_subplots(
+        rows=2, cols=1, vertical_spacing=spacing_val,
+    )
+    fig.append_trace(
+        {
+            'x': [i_data['time'] for i_data in tickers_history],
+            'y': [i_data['measure'] for i_data in tickers_history],
+        },
+        1,
+        1,
+    )
     return fig
 
 

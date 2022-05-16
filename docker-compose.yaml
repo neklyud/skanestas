@@ -30,6 +30,17 @@ services:
     networks:
       - my-network
 
+  frontend:
+    build: ./visualisation
+    container_name: frontend
+    ports:
+      - "8050:8050"
+    restart: always
+    depends_on:
+      - influxdb
+      - backend
+    networks:
+      - my-network
 
 volumes:
   influxdb-storage:
